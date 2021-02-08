@@ -1,0 +1,155 @@
+From 47f9ecd4b6ff56a72230da9dcff8bc628992ce89 Mon Sep 17 00:00:00 2001
+From: Corinna Vinschen <xda@vinschen.de>
+Date: Sat, 12 Aug 2017 21:22:57 +0200
+Subject: [PATCH] InputDispatcher: On keypress, deliver keycode to
+ pokeUserActivity
+
+Change-Id: I8f64a6fa9b4b2e4520e25731f55e89f5087c70da
+Signed-off-by: Corinna Vinschen <xda@vinschen.de>
+Signed-off-by: Jayant-Deshmukh <jayantdeshmuk008@gmail.com>
+---
+ .../inputflinger/dispatcher/InputDispatcher.cpp    | 46 +++++++++++++++-------
+ services/inputflinger/dispatcher/InputDispatcher.h |  2 +-
+ .../include/InputDispatcherPolicyInterface.h       |  2 +-
+ 3 files changed, 34 insertions(+), 16 deletions(-)
+
+diff --git a/services/inputflinger/dispatcher/InputDispatcher.cpp b/services/inputflinger/dispatcher/InputDispatcher.cpp
+index fd910b46b..4e0edd838 100644
+--- a/services/inputflinger/dispatcher/InputDispatcher.cpp
++++ b/services/inputflinger/dispatcher/InputDispatcher.cpp
+@@ -619,7 +619,7 @@ void InputDispatcher::dispatchOnceInnerLocked(nsecs_t* nextWakeupTime) {
+ 
+         // Poke user activity for this event.
+         if (mPendingEvent->policyFlags & POLICY_FLAG_PASS_TO_USER) {
+-            pokeUserActivityLocked(*mPendingEvent);
++            pokeUserActivityLocked(mPendingEvent);
+         }
+     }
+ 
+@@ -1379,7 +1379,7 @@ void InputDispatcher::dispatchEventLocked(nsecs_t currentTime, EventEntry* event
+ 
+     ALOG_ASSERT(eventEntry->dispatchInProgress); // should already have been set to true
+ 
+-    pokeUserActivityLocked(*eventEntry);
++    pokeUserActivityLocked(eventEntry);
+ 
+     for (const InputTarget& inputTarget : inputTargets) {
+         sp<Connection> connection =
+@@ -2187,12 +2187,12 @@ std::string InputDispatcher::getApplicationWindowLabel(
+     }
+ }
+ 
+-void InputDispatcher::pokeUserActivityLocked(const EventEntry& eventEntry) {
+-    if (eventEntry.type == EventEntry::Type::FOCUS) {
++void InputDispatcher::pokeUserActivityLocked(const EventEntry* eventEntry) {
++    if (eventEntry->type == EventEntry::Type::FOCUS) {
+         // Focus events are passed to apps, but do not represent user activity.
+         return;
+     }
+-    int32_t displayId = getTargetDisplayId(eventEntry);
++    int32_t displayId = getTargetDisplayId(*eventEntry);
+     sp<InputWindowHandle> focusedWindowHandle =
+             getValueByKey(mFocusedWindowHandlesByDisplay, displayId);
+     if (focusedWindowHandle != nullptr) {
+@@ -2206,21 +2206,21 @@ void InputDispatcher::pokeUserActivityLocked(const EventEntry& eventEntry) {
+     }
+ 
+     int32_t eventType = USER_ACTIVITY_EVENT_OTHER;
+-    switch (eventEntry.type) {
++    switch (eventEntry->type) {
+         case EventEntry::Type::MOTION: {
+-            const MotionEntry& motionEntry = static_cast<const MotionEntry&>(eventEntry);
+-            if (motionEntry.action == AMOTION_EVENT_ACTION_CANCEL) {
++            const MotionEntry* motionEntry = static_cast<const MotionEntry*>(eventEntry);
++            if (motionEntry->action == AMOTION_EVENT_ACTION_CANCEL) {
+                 return;
+             }
+ 
+-            if (MotionEvent::isTouchEvent(motionEntry.source, motionEntry.action)) {
++            if (MotionEvent::isTouchEvent(motionEntry->source, motionEntry->action)) {
+                 eventType = USER_ACTIVITY_EVENT_TOUCH;
+             }
+             break;
+         }
+         case EventEntry::Type::KEY: {
+-            const KeyEntry& keyEntry = static_cast<const KeyEntry&>(eventEntry);
+-            if (keyEntry.flags & AKEY_EVENT_FLAG_CANCELED) {
++            const KeyEntry* keyEntry = static_cast<const KeyEntry*>(eventEntry);
++            if (keyEntry->flags & AKEY_EVENT_FLAG_CANCELED) {
+                 return;
+             }
+             eventType = USER_ACTIVITY_EVENT_BUTTON;
+@@ -2230,15 +2230,20 @@ void InputDispatcher::pokeUserActivityLocked(const EventEntry& eventEntry) {
+         case EventEntry::Type::CONFIGURATION_CHANGED:
+         case EventEntry::Type::DEVICE_RESET: {
+             LOG_ALWAYS_FATAL("%s events are not user activity",
+-                             EventEntry::typeToString(eventEntry.type));
++                             EventEntry::typeToString(eventEntry->type));
+             break;
+         }
+     }
+ 
+     std::unique_ptr<CommandEntry> commandEntry =
+             std::make_unique<CommandEntry>(&InputDispatcher::doPokeUserActivityLockedInterruptible);
+-    commandEntry->eventTime = eventEntry.eventTime;
++    commandEntry->eventTime = eventEntry->eventTime;
+     commandEntry->userActivityEventType = eventType;
++    if (eventType == USER_ACTIVITY_EVENT_BUTTON) {
++        const KeyEntry* keyEntry = static_cast<const KeyEntry*>(eventEntry);
++        commandEntry->keyEntry = const_cast<KeyEntry*>(keyEntry);
++        keyEntry->refCount += 1;
++    }
+     postCommandLocked(std::move(commandEntry));
+ }
+ 
+@@ -5032,7 +5037,20 @@ bool InputDispatcher::afterMotionEventLockedInterruptible(const sp<Connection>&
+ void InputDispatcher::doPokeUserActivityLockedInterruptible(CommandEntry* commandEntry) {
+     mLock.unlock();
+ 
+-    mPolicy->pokeUserActivity(commandEntry->eventTime, commandEntry->userActivityEventType);
++    int32_t keyCode = AKEYCODE_UNKNOWN;
++
++    if (commandEntry->userActivityEventType == USER_ACTIVITY_EVENT_BUTTON &&
++            commandEntry->keyEntry) {
++        keyCode = commandEntry->keyEntry->keyCode;
++    }
++
++    mPolicy->pokeUserActivity(commandEntry->eventTime, commandEntry->userActivityEventType,
++            keyCode);
++
++    if (commandEntry->userActivityEventType == USER_ACTIVITY_EVENT_BUTTON &&
++            commandEntry->keyEntry) {
++        commandEntry->keyEntry->release();
++    }
+ 
+     mLock.lock();
+ }
+diff --git a/services/inputflinger/dispatcher/InputDispatcher.h b/services/inputflinger/dispatcher/InputDispatcher.h
+index 23d7e01d1..452ef6b99 100644
+--- a/services/inputflinger/dispatcher/InputDispatcher.h
++++ b/services/inputflinger/dispatcher/InputDispatcher.h
+@@ -417,7 +417,7 @@ private:
+     void addGlobalMonitoringTargetsLocked(std::vector<InputTarget>& inputTargets, int32_t displayId,
+                                           float xOffset = 0, float yOffset = 0) REQUIRES(mLock);
+ 
+-    void pokeUserActivityLocked(const EventEntry& eventEntry) REQUIRES(mLock);
++    void pokeUserActivityLocked(const EventEntry* eventEntry) REQUIRES(mLock);
+     bool checkInjectionPermission(const sp<InputWindowHandle>& windowHandle,
+                                   const InjectionState* injectionState);
+     bool isWindowObscuredAtPointLocked(const sp<InputWindowHandle>& windowHandle, int32_t x,
+diff --git a/services/inputflinger/dispatcher/include/InputDispatcherPolicyInterface.h b/services/inputflinger/dispatcher/include/InputDispatcherPolicyInterface.h
+index 667af9bbd..4cb083d4f 100644
+--- a/services/inputflinger/dispatcher/include/InputDispatcherPolicyInterface.h
++++ b/services/inputflinger/dispatcher/include/InputDispatcherPolicyInterface.h
+@@ -99,7 +99,7 @@ public:
+                               uint32_t policyFlags) = 0;
+ 
+     /* Poke user activity for an event dispatched to a window. */
+-    virtual void pokeUserActivity(nsecs_t eventTime, int32_t eventType) = 0;
++    virtual void pokeUserActivity(nsecs_t eventTime, int32_t eventType, int32_t keyCode) = 0;
+ 
+     /* Checks whether a given application pid/uid has permission to inject input events
+      * into other applications.
+-- 
+2.15.0
+

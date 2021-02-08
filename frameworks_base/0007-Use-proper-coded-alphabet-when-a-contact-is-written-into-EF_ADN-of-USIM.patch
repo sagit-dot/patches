@@ -1,0 +1,61 @@
+From b56f6762ff67059a2697f1e9cbb09325f8fd1305 Mon Sep 17 00:00:00 2001
+From: Umashankar Godachi <umasha@codeaurora.org>
+Date: Tue, 27 Jun 2017 15:35:39 +0530
+Subject: [PATCH] Use proper coded alphabet when a contact is written into EF_ADN of USIM.
+
+Based on the description in "3GPP TS 31.102 clause 4.4.2.3" shown below,
+Alpha Identifier of EF_ADN of USIM is defined in default 7-bit coded
+alphabet if bit8 is set to 0 otherwise, it is defined in UCS2 coded.
+
+Change-Id: Ifbe06e1dd1cf29692f1201ab27e71250de30b3df
+CRs-Fixed: 2219692
+---
+
+diff --git a/telephony/java/com/android/internal/telephony/uicc/IccUtils.java b/telephony/java/com/android/internal/telephony/uicc/IccUtils.java
+index 1d13692..e429fb0 100644
+--- a/telephony/java/com/android/internal/telephony/uicc/IccUtils.java
++++ b/telephony/java/com/android/internal/telephony/uicc/IccUtils.java
+@@ -23,10 +23,12 @@
+ import android.graphics.Color;
+ 
+ import com.android.internal.annotations.VisibleForTesting;
++import com.android.internal.telephony.EncodeException;
+ import com.android.internal.telephony.GsmAlphabet;
+ import com.android.telephony.Rlog;
+ 
+ import java.io.UnsupportedEncodingException;
++import java.nio.charset.Charset;
+ import java.util.List;
+ 
+ /**
+@@ -925,4 +927,30 @@
+         }
+         return serializedFplmns;
+     }
++
++    static byte[]
++    stringToAdnStringField(String alphaTag) {
++        boolean isUcs2 = false;
++        try {
++           for(int i = 0; i < alphaTag.length(); i++) {
++               GsmAlphabet.countGsmSeptets(alphaTag.charAt(i), true);
++           }
++        } catch (EncodeException e) {
++            isUcs2 = true;
++        }
++        return stringToAdnStringField(alphaTag, isUcs2);
++    }
++
++    static byte[]
++    stringToAdnStringField(String alphaTag, boolean isUcs2) {
++        if (!isUcs2) {
++            return GsmAlphabet.stringToGsm8BitPacked(alphaTag);
++        }
++        byte[] alphaTagBytes = alphaTag.getBytes(Charset.forName("UTF-16BE"));
++        byte[] ret = new byte[1 + alphaTagBytes.length];
++        ret[0] = (byte)0x80;
++        System.arraycopy(alphaTagBytes, 0, ret, 1, alphaTagBytes.length);
++
++        return ret;
++    }
+ }

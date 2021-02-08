@@ -1,0 +1,23 @@
+From 1d5cf2dbcc419ae14386c0bce1bb3530e787dcc8 Mon Sep 17 00:00:00 2001
+From: sbwml <984419930@qq.com>
+Date: Mon, 14 Dec 2020 14:47:29 +0800
+Subject: [PATCH] =China-Mobile Name
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+---
+ assets/carrier_config_carrierid_1435_China-Mobile.xml | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/assets/carrier_config_carrierid_1435_China-Mobile.xml b/assets/carrier_config_carrierid_1435_China-Mobile.xml
+index 5bf778c..56531ae 100644
+--- a/assets/carrier_config_carrierid_1435_China-Mobile.xml
++++ b/assets/carrier_config_carrierid_1435_China-Mobile.xml
+@@ -5,4 +5,6 @@
+     <boolean name="allow_add_call_during_video_call" value="false" />
+     <boolean name="allow_hold_video_call_bool" value="false" />
+     <boolean name="support_video_conference_call_bool" value="false"/>
++    <boolean name="carrier_name_override_bool" value="true"/>
++    <string name="carrier_name_string">中国移动</string>
+ </carrier_config>

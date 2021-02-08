@@ -1,0 +1,50 @@
+From 25808c6e7c257a0ef5d7152367966da591d97d47 Mon Sep 17 00:00:00 2001
+From: Chris Crump <chris@cypheros.co>
+Date: Wed, 15 Apr 2020 02:24:39 -0400
+Subject: [PATCH] Settings: Biometrics: Get availability based on property.
+
+ * Also export finish activity so it can be called
+   from FaceSense.
+
+Change-Id: I016b1c93547a6056916b862da9ba39c5da4a61e6
+---
+ AndroidManifest.xml                                          | 2 +-
+ .../face/FaceSettingsAttentionPreferenceController.java      | 5 +++++
+ 2 files changed, 6 insertions(+), 1 deletion(-)
+
+diff --git a/AndroidManifest.xml b/AndroidManifest.xml
+index de4ae39e84..0061980c1d 100644
+--- a/AndroidManifest.xml
++++ b/AndroidManifest.xml
+@@ -1634,7 +1634,7 @@
+             android:screenOrientation="portrait"/>
+ 
+         <activity android:name=".biometrics.face.FaceEnrollFinish"
+-            android:exported="false"
++            android:exported="true"
+             android:screenOrientation="portrait"/>
+ 
+         <!-- Must not be exported -->
+diff --git a/src/com/android/settings/biometrics/face/FaceSettingsAttentionPreferenceController.java b/src/com/android/settings/biometrics/face/FaceSettingsAttentionPreferenceController.java
+index 200c0b949e..8b949ace60 100644
+--- a/src/com/android/settings/biometrics/face/FaceSettingsAttentionPreferenceController.java
++++ b/src/com/android/settings/biometrics/face/FaceSettingsAttentionPreferenceController.java
+@@ -20,6 +20,7 @@
+ import android.hardware.face.FaceManager;
+ import android.hardware.face.FaceManager.GetFeatureCallback;
+ import android.hardware.face.FaceManager.SetFeatureCallback;
++import android.os.SystemProperties;
+ import android.provider.Settings;
+ 
+ import androidx.preference.PreferenceScreen;
+@@ -123,6 +124,10 @@ public boolean isSliceable() {
+ 
+     @Override
+     public int getAvailabilityStatus() {
++        boolean senseEnabled = SystemProperties.getBoolean("ro.face.sense_service", false);
++        if (senseEnabled) {
++            return UNSUPPORTED_ON_DEVICE;
++        }
+         return AVAILABLE;
+     }
+ }
