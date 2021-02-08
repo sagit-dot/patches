@@ -1,0 +1,55 @@
+From ea6370a6a42771236849802d27a5470fda165cb1 Mon Sep 17 00:00:00 2001
+From: sbwml <984419930@qq.com>
+Date: Mon, 8 Feb 2021 19:44:00 +0800
+Subject: [PATCH] soong: Add clang-12 & arm-linux-androidkernel to allowed
+ commands
+
+Change-Id: Iff77563a4f0d2e08f1c2f89deac374093bef8521
+---
+ ui/build/paths/config.go | 30 ++++++++++++++++++++++++++++++
+ 1 file changed, 30 insertions(+)
+
+diff --git a/ui/build/paths/config.go b/ui/build/paths/config.go
+index bb17596..4a85c82 100644
+--- a/ui/build/paths/config.go
++++ b/ui/build/paths/config.go
+@@ -99,6 +99,36 @@ var Configuration = map[string]PathConfig{
+ 	"unzip":   Allowed,
+ 	"zip":     Allowed,
+ 
++	// clang-12
++	"clang-12":    Allowed,
++
++	// arm-linux-androidkernel
++	"arm-linux-androidkernel-addr2line":    Allowed,
++	"arm-linux-androidkernel-ar":           Allowed,
++	"arm-linux-androidkernel-as":           Allowed,
++	"arm-linux-androidkernel-c++filt":      Allowed,
++	"arm-linux-androidkernel-cpp":          Allowed,
++	"arm-linux-androidkernel-dwp":          Allowed,
++	"arm-linux-androidkernel-elfedit":      Allowed,
++	"arm-linux-androidkernel-gcc":          Allowed,
++	"arm-linux-androidkernel-gcc-ar":       Allowed,
++	"arm-linux-androidkernel-gcc-nm":       Allowed,
++	"arm-linux-androidkernel-gcc-ranlib":   Allowed,
++	"arm-linux-androidkernel-gcov":         Allowed,
++	"arm-linux-androidkernel-gcov-tool":    Allowed,
++	"arm-linux-androidkernel-gprof":        Allowed,
++	"arm-linux-androidkernel-ld":           Allowed,
++	"arm-linux-androidkernel-ld.bfd":       Allowed,
++	"arm-linux-androidkernel-ld.gold":      Allowed,
++	"arm-linux-androidkernel-nm":           Allowed,
++	"arm-linux-androidkernel-objcopy":      Allowed,
++	"arm-linux-androidkernel-objdump":      Allowed,
++	"arm-linux-androidkernel-ranlib":       Allowed,
++	"arm-linux-androidkernel-readelf":      Allowed,
++	"arm-linux-androidkernel-size":         Allowed,
++	"arm-linux-androidkernel-strings":      Allowed,
++	"arm-linux-androidkernel-strip":        Allowed,
++
+ 	// Host toolchain is removed. In-tree toolchain should be used instead.
+ 	// GCC also can't find cc1 with this implementation.
+ 	"ar":         Forbidden,
+-- 
+2.15.0
+
