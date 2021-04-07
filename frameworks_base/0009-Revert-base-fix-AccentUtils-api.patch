@@ -1,0 +1,31 @@
+From e05a9040329c148d331ffb743ef4812409e89138 Mon Sep 17 00:00:00 2001
+From: sbwml <984419930@qq.com>
+Date: Mon, 8 Mar 2021 21:42:38 +0800
+Subject: [PATCH] Revert base: fix AccentUtils api
+
+Change-Id: If2f239a90b8f2236d3a2efa3b834d6d354a4f172
+---
+ non-updatable-api/current.txt | 7 -------
+ 1 file changed, 7 deletions(-)
+
+diff --git a/non-updatable-api/current.txt b/non-updatable-api/current.txt
+index e640f4c3..57748a80 100644
+--- a/non-updatable-api/current.txt
++++ b/non-updatable-api/current.txt
+@@ -12538,13 +12538,6 @@ package android.content.pm {
+ 
+ package android.content.res {
+ 
+-  public final class AccentUtils {
+-    method public static int getDarkAccentColor(int);
+-    method public static int getLightAccentColor(int);
+-    method public static boolean isResourceDarkAccent(@Nullable String);
+-    method public static boolean isResourceLightAccent(@Nullable String);
+-  }
+-
+   public class AssetFileDescriptor implements java.io.Closeable android.os.Parcelable {
+     ctor public AssetFileDescriptor(android.os.ParcelFileDescriptor, long, long);
+     ctor public AssetFileDescriptor(android.os.ParcelFileDescriptor, long, long, android.os.Bundle);
+-- 
+2.15.0
+
